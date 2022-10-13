@@ -1,0 +1,13 @@
+#!/bin/bash
+# power on, off, etc.
+# production: true
+
+declare -A options
+options[" lock screen"]="betterlockscreen -l"
+options[" power off"]="shutdown now"
+options[" sleep"]="systemctl suspend"
+
+chosen=$(printf "%s\n" "${!options[@]}" | rofi -show -dmenu -p "Select power state")
+
+# execute command
+${options[$chosen]}
