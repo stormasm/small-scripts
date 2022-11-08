@@ -6,6 +6,7 @@ declare -A options
 options[" lock screen"]="betterlockscreen -l"
 options[" power off"]="shutdown now"
 options[" sleep"]="systemctl suspend"
+options[" reboot"]="reboot"
 
 chosen=$(printf "%s\n" "${!options[@]}" | rofi -show -dmenu -p "Select power state")
 
