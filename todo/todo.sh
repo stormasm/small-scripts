@@ -1,9 +1,9 @@
 #!/bin/bash
+# TODO: handle rofi exits
 
 ### Setup ###
 # Check if $TODO_CONF is exported globally; if not use default
 CONF=${TODO_CONF:-"$HOME/.config/todo/todo.conf"}
-# echo "Config file located at $CONF"
 source $CONF
 
 
@@ -26,12 +26,11 @@ create_table () {
         priority INTEGER,
         duedate DATETIME,
         status TEXT);" 2>> $ERROR_LOG
-    # TODO: fix for bash later
-    # if [ $((?)) != 0 ]; then
-    #     echo "Error creating database. For more info check $ERROR_LOG"
-    # else
+    if [ $(?) != 0 ]; then
+        echo "Error creating database. For more info check $ERROR_LOG"
+    else
         echo "'$TABLENAME' table created"
-    # fi
+    fi
 }
 [[ $(sqlite3 $DBPATH ".tables $TABLENAME") = "" ]] && create_table
 
@@ -43,14 +42,16 @@ declare -A priorities
 priorities["LOW"]=2
 priorities["MEDIUM"]=1
 priorities["HIGH"]=0
-priorities_args=$(echo ${!priorities[@]} | awk '{ for (i = 1; i < NF + 1; i++) print $i }')
+priorities_args=$(echo ${!priorities[@]} | 
+    awk '{ for (i = 1; i < NF + 1; i++) print $i }')
 
 # Status: 'IN-PROGRESS', 'COMPLETED', 'CANCELED'
 declare -A statuses 
 statuses["IN-PROGRESS"]=2
 statuses["COMPLETED"]=1
 statuses["CANCELED"]=0
-statuses_args=$(echo ${!statuses[@]} | awk '{ for (i = 1; i < NF + 1; i++) print $i }')
+statuses_args=$(echo ${!statuses[@]} | 
+    awk '{ for (i = 1; i < NF + 1; i++) print $i }')
 
 # Given no arguments, all todo items are printed
 query () {
@@ -101,7 +102,8 @@ show () {
     show_statuses["COMPLETED"]="COMPLETED"
     show_statuses["CANCELED"]="CANCELED"
     show_statuses["ANY"]=""
-    show_statuses_args=$(echo ${!show_statuses[@]} | awk '{ for (i = 1; i < NF + 1; i++) print $i }')
+    show_statuses_args=$(echo ${!show_statuses[@]} | 
+        awk '{ for (i = 1; i < NF + 1; i++) print $i }')
 
     chosen_show_status=$(echo -e "$show_statuses_args" | 
         rofi -show -dmenu -i -p "Enter show_statuses")
@@ -111,7 +113,9 @@ show () {
 
 change_status () {
     rows=$(query 100 "$status")
-    chosen_id=$(echo -e "$rows" | rofi -show -dmenu -i -p "Pick item" | awk '{print $1}')
+    chosen_id=$(echo -e "$rows" | 
+        rofi -show -dmenu -i -p "Pick item" | 
+        awk '{print $1}')
     echo $chosen_id
     row=$(sqlite3 "$DBPATH" "
         SELECT entry, priority, duedate FROM $TABLENAME 
@@ -129,10 +133,16 @@ change_status () {
     main_menu
 }
 
-# not implemented yet
 delete () {
-    echo "delete"
-    exit 0
+    rows=$(query 100 "$show_status")
+    chosen_row=$(echo -e "$rows" | 
+        rofi -show -dmenu -i -p "Pick item")
+    chosen_id=$(echo $chosen_row | awk '{print $1}')
+    chosen_entry=$(echo $chosen_row | awk -F '|' '{ print $2 }')
+    notify-send "TODO Manager" "Deleted following entry:\n$chosen_entry"
+    sqlite3 "$DBPATH" "DELETE FROM $TABLENAME WHERE id = $chosen_id"
+
+    main_menu
 }
 
 exit_rofi () {
@@ -147,7 +157,8 @@ main_menu() {
     rofi_options["Shown-status"]="show"
     rofi_options["Exit"]="exit_rofi"
 
-    args=$(echo ${!rofi_options[@]} | awk '{ for (i = 1; i < NF + 1; i++) print $i }')
+    args=$(echo ${!rofi_options[@]} | 
+        awk '{ for (i = 1; i < NF + 1; i++) print $i }')
     output=$(query 10 $show_status)
     input="$args\n------------------------------------\n$output"
     chosen=$(echo -e "$input" | rofi -dmenu -i -show -p "Choose option")
