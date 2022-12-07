@@ -165,4 +165,5 @@ main_menu() {
     ${rofi_options[$chosen]}
 }
 
+# Enter at main menu
 main_menu
