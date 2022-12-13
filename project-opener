@@ -1,0 +1,35 @@
+#!/bin/bash
+# production: false
+
+PROJECT_PATH="$HOME/documents/"
+
+# The 'projects' are directories with git repos
+paths=$(find $PROJECT_PATH -name '.git' -print | 
+    grep -v 'Permission denied' | 
+    xargs -n 1 dirname
+)
+projects=$(echo "$paths" | awk -F '/' '{ print $NF }')
+
+# # Also get docker containers running 
+containers=$(docker ps --format "{{.Names}}")
+
+# Format options for rofi
+containers_fmt=$(echo -e "$containers" | nl)
+next_index=$(echo "$containers_fmt" | awk 'END { print $1+1 }')
+projects_fmt=$(echo -e "$projects" | nl -v $next_index)
+
+options="Containers:
+$containers_fmt
+Projects
+$projects_fmt"
+
+vscode_paths=("$containers\n$projects")
+
+# Collect input
+choice=$(echo -e "$options" | rofi -dmenu -show | awk '{ print $1 }')
+echo $choice
+echo "${vscode_paths[1]}"
+echo -e "${vscode_paths[0]}"
+
+# # Execute VSCode with the project path
+# [ "$choice" != "" ] && code ${path_dict[$choice]}
