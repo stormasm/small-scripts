@@ -8,7 +8,6 @@ connect() {
         awk '{ if (NR > 5) print $0 }')
     
     networks=$(echo "${networks_info}" | awk '{ print $1 }')
-    # securities=$( | readarray)
     readarray -t networks_list < <(echo "${networks_info}" | awk '{ print $1 }')
     readarray -t securities < <(echo "${networks_info}" | awk '{ print $2 }')
     network_choice=$(echo "${networks}" | 
@@ -17,13 +16,15 @@ connect() {
         awk '{ print $1-1 }'
     )
     security=${securities[$network_choice]}
+    network=${networks_list[$network_choice]}
     if [[ "$security" -eq "psk" ]]; then
         password=$(rofi -dmenu -show -p "Enter password")
-        connect_status=$(iwctl station $STATION connect $network_choice --passphrase="$password")
+        connect_status=$(iwctl station $STATION connect $network --passphrase="$password")
     else
         connect_status=$(iwctl station $STATION connect $network_choice)
     fi
 
+    echo $connect_status
     if [[ "$connect_status" -ne "" ]]; then
         notify-send "WiFi Manager" "Failed to connect to: $network_choice"
         main_menu
