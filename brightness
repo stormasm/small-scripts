@@ -1,0 +1,18 @@
+#!/bin/bash
+# Control and notify brightness
+
+get_percent () {
+    percent="$(xbacklight -get | awk -F'.' '{ print $1 }')%"
+}
+
+case $1 in 
+    set)
+        xbacklight -set $(rofi -show -dmenu -p "Brightness")
+        get_percent
+        dunstify "Brightness: $percent" -r 98
+        ;;
+    *)
+        get_percent
+        dunstify "Brightness: $percent" -r 98
+        ;;
+esac   
