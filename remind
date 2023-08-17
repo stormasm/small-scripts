@@ -1,0 +1,40 @@
+#!/home/marchall/.cargo/bin/nu
+
+# Quickly create reminders as notifications
+def main [] {
+  let options = [
+    "1min", 
+    "5min", 
+    "10min", 
+    "15min", 
+    "30min", 
+    "45min", 
+    "1hr", 
+    "1.5hr", 
+    "2hr", 
+    "3hr", 
+    "4hr", 
+    "Other",
+  ]
+  let selection = ($options | input list)
+  if $selection == "Other" {
+    let $selection = (input) 
+  } else if $selection == "" {
+    print "Exiting"
+    exit 0
+  }
+  let selection = ($selection | into duration)
+  let target_time = ((date now) + $selection | date format '%H:%M')
+  let message = (input "Message: ")
+
+  print $"Notifying for '($message)' ($target_time | date humanize)"
+  let output = (do {"notify-send 'hello'" |  at $"((date now) + 1min | date format '%H:%M:')" } | complete).stderr
+  let output = (do {
+      $"notify-send '($message)'" | 
+      at $"($target_time)" 
+    } | complete
+  )
+  if $output.exit_code != 0 {
+    print $"Reminder creation failed, error code:\n($output.stderr)"
+  }
+}
