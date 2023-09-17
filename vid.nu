@@ -9,9 +9,9 @@ export def info [fname: string] -> table {
 # Aspect ratio informtation and landscape bool
 export def aspect-ratio [fname: string] {
     info $fname | 
-        get streams | 
+        get streams.0 | 
         select width height | 
-        insert ratio {|it| $it.width / $it.height} | 
+        insert ratio {|it| $it.width / $it.height | math round -p 2} | 
         insert landscape {|it| $it.ratio > 1}
 }
 
