@@ -7,7 +7,7 @@ def get-networks [] {
         str trim | 
         from ssv -m 2 | 
         rename -b {str replace -a '-' '' | str downcase} | 
-        insert wpa {|| $in | str contains WPA security | get security}
+        insert wpa {$in | str contains WPA security | get security}
 }
 
 # Get current config
