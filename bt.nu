@@ -1,8 +1,8 @@
 #!/home/marchall/.cargo/bin/nu
 
 # List bluetooth devices and connection status
-export def list [] {
-    let connected = connected
+export def "bt list" [] {
+    let connected = bt connected
     bluetoothctl devices | 
         split row -r '\n' | 
         each {|it| $it | parse "{device} {address} {name}"} |
@@ -12,18 +12,18 @@ export def list [] {
 }
 
 # Output connected device 
-export def connected [] {
+export def "bt connected" [] {
     bluetoothctl devices Connected | 
         str trim | 
         parse "{device} {address} {name}"
 }
 
 # Display prompt to connect to device
-export def connect [] {
-    let options = (list)
+export def "bt connect" [] {
+    let options = (bt list)
     let choice = ($options.name | input list)
     let address = ($options | where name == $choice | get address.0)
-    let connected = connected
+    let connected = bt connected
     if $address == (not ($connected | is-empty)) and ($connected | get address.0) { 
         print $"Already conncted to ($choice)... exiting"
         return
@@ -34,4 +34,8 @@ export def connect [] {
         print "Connection unsuccessful. Output:"
         print $"\n(ansi red_bold)($connection_status.stdout)"
     }
+}
+
+export def main [] {
+    bt list
 }
