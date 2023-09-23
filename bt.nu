@@ -8,7 +8,7 @@ export def "bt list" [] {
         each {|it| $it | parse "{device} {address} {name}"} |
         flatten | 
         select address name | 
-        insert connected {|x| (not ($connected | is-empty)) and ($x.address == (connected | get address.0))}
+        insert connected {|x| (not ($connected | is-empty)) and ($x.address == (bt connected | get address.0))}
 }
 
 # Output connected device 
