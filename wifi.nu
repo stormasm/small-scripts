@@ -15,13 +15,18 @@ export def "wifi config" [] {
     nmcli device show | from ssv -n | transpose -r | rename -b {str trim -c ':' | str downcase}
 }
 
-# Connect to wifi
-export def "wifi connect" [] {
+# Connect to wifi and optionally save to pass store
+export def "wifi connect" [
+    --no-save (-n) # Don't save password to pass store
+] {
     let networks = (get-networks)
     let choice = ($networks | get SSID | input list)
     if ($networks | where ssid == $choice | first | get wpa) {
         let password = (input -s "Password: ")
-        nmcli device wifi connect $choice password $password
+        if not $no_save {
+            nmcli device wifi connect $choice password $password
+        }
+        echo $password | pass insert $"wifi/($choice)" --echo
     } else {
         nmcli device wifi connect $choice
     }
