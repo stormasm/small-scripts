@@ -1,3 +1,6 @@
+#!/bin/env nu
+# battery.nu
+
 export def "battery info" [
   --interface (-i): string = "BAT0" # Battery interface
 ] {
@@ -8,15 +11,16 @@ export def "battery info" [
       str replace -a "POWER_SUPPLY_" "" | 
       str downcase
     } | 
-    transpose -r
+    transpose -r |
+    into record
 }
 
 export def "battery level" [] {
-  battery info | get capacity | first
+  battery info | get capacity
 }
 
 export def "battery notify" [] {
-  notify-send $"Battery: $(battery level)%"
+  notify-send $"Battery: (battery level)%"
 }
 
 export def main [] {
