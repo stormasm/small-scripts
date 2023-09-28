@@ -12,7 +12,8 @@ export def "battery info" [
       str downcase
     } | 
     transpose -r |
-    into record
+    into record |
+    each { $in | str trim }
 }
 
 export def "battery level" [] {
