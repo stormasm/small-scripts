@@ -18,6 +18,16 @@ export def "bt connected" [] {
         parse "{device} {address} {name}"
 }
 
+# Wrapper for `bluetoothctl disconnect`
+export def "bt disconnect" [] {
+    if (bt connected | length) > 0 {
+        let output = (bluetoothctl disconnect | complete)
+        if $output.exit_code != 0 {
+            print "Disconnect failed"
+        }
+    }
+}
+
 # Display prompt to connect to device
 export def "bt connect" [] {
     let options = (bt list)
