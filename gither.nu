@@ -14,7 +14,6 @@ export def docker-info [] {
 export def main [] {
   echo "Gathering projects..."
   let docker_info = docker-info
-
   let projects = (
     cd $env.HOME; ls **/*/.git | 
     append (ls ~/.gitclones/*/.git) | 
@@ -22,11 +21,16 @@ export def main [] {
     join ($docker_info | rename -c [Source project_dir]) project_dir --left | 
     rename -b {str downcase | str trim | str replace -a ' ' '_'} 
   )
-  let project = (
+  let project_idx = (
     $projects | 
     get project_dir | 
     path basename |
-    input list -f
+    venumerate |
+    input list -f |
+    split row ' ' | 
+    first | 
+    into int
   )
-  print $project
+  let project = ($projects | get ($project_idx - 1))  
+  $project
 }
