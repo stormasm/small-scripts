@@ -30,20 +30,33 @@ export def docker-info [] {
 }
 
 # Select project to open
-export def-env "gelp select" [] {
+export def-env "gelp select" [] -> record {
   echo "Gathering projects..."
   let docker_info = docker-info
-  let projects = (
+  let usage = (gelp get-project-history ~/.local/share/gelp/history.db projects) # TODO: update to pull path from environment
+  mut projects = (
     cd $env.HOME; ls documents/*/.git | 
     append (ls .gitclones/*/.git) | 
     insert project_dir { |it| $env.HOME | path join ($it.name | path dirname) } |
     join ($docker_info | rename -c [Source project_dir]) project_dir --left | 
     rename -b { str downcase | str trim | str replace -a ' ' '_' } 
   )
+  if not ($usage | is-empty) {
+    $projects = (
+      $projects | 
+        join (
+          $usage | 
+          reject id | 
+          rename -c [name project_dir] | 
+          update last_used { || into datetime }
+        ) project_dir --left | 
+      sort-by uses
+    )
+  }
   let project_idx = (
     $projects | 
     each { 
-      if not ($in.image | is-empty) { 
+      if not ($in | get -i image | is-empty) { 
         $"($in.project_dir | path basename) \((ansi g)container: (ansi reset)($in.image)\)" 
       } else { 
         $"($in.project_dir | path basename)" 
@@ -56,7 +69,13 @@ export def-env "gelp select" [] {
     if ($in | is-empty) { return } else { into int }  
   )
   let project = ($projects | get ($project_idx - 1))  
+  $project
+}
 
+# Run action on project
+def run-action [
+  project: record # Project to run action on 
+] {
   let action = (["edit", "git", "cd", "open remote"] | input list)
   if ($action == "edit") {
     hx $project.project_dir
@@ -67,7 +86,61 @@ export def-env "gelp select" [] {
   } else if ($action == "open remote") {
     xdg-open (parse-remote-url $project.project_dir)
   }
+  
 }
 
+### Database
+
+# Update number of uses of a project
+export def "gelp update-uses" [
+  project: record # Project to record in database
+  db_path: path # Database path
+] {
+  open $db_path | query db $"
+    INSERT INTO projects 
+      \(name, last_used, uses\)
+      VALUES \(
+        '($project.project_dir)', 
+        '(date now | format date "%Y-%m-%dT%H:%M:%S")', 
+        1
+      \)
+      ON CONFLICT \(name\) DO UPDATE SET 
+        uses = uses + excluded.uses,
+        last_used = '(date now | format date "%Y-%m-%dT%H:%M:%S")';
+  "
+}
+
+# Get project history
+# TODO: Pull path, table name from environment
+export def "gelp get-project-history" [
+  db_path: path # Database path
+  table_name: string # Database table name
+] {
+  open $db_path | query db $"
+    SELECT * FROM ($table_name);
+  "
+}
+
+# Create SQLite database
+export def "gelp create-db" [
+  db_path: path # Database path
+] {
+  mkdir ($db_path | path dirname)
+  touch $db_path
+  open $db_path | query db "
+    CREATE TABLE IF NOT EXISTS projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      uses INTEGER,
+      last_used TEXT NOT NULL
+    );
+  "
+}
+
+export def init [] { "not implemented" }
+
 # gelp.nu - yet another git helper
-export def-env main [] { gelp select }
+export def-env main [] { 
+  let project = (gelp select)
+  run-action $project
+}
