@@ -49,7 +49,8 @@ export def-env "gelp select" [] -> record {
           reject id | 
           update last_used { || into datetime }
         ) project_dir --left | 
-      sort-by uses
+      default 0 uses |
+      sort-by uses -r
     )
   }
   let project_idx = (
@@ -75,7 +76,8 @@ export def-env "gelp select" [] -> record {
 def-env run-action [
   project: record # Project to run action on 
 ] {
-  let action = (["edit", "git", "cd", "open remote"] | input list -f)
+  let action = (["edit", "git", "cd", "open remote"] | input list -f $"Action for ($project.project_dir | path basename):")
+  gelp update-uses $project ~/.local/share/gelp/history.db
   if ($action == "edit") {
     hx $project.project_dir
   } else if ($action == "git") { 
@@ -136,11 +138,26 @@ export def "gelp create-db" [
   "
 }
 
+# Get last-used project
 def get-last-used [] {
   gelp get-project-history ~/.local/share/gelp/history.db projects | 
     update last_used {|| into datetime} | 
     sort-by last_used | 
     last
+}
+
+# Clear project use history
+export def "gelp clear-history" [
+  db_path: path # Database path
+] {
+  if (input "Are you sure? ") == "y" {
+    let num_entries = (open $db_path | query db $"
+      SELECT * FROM projects;
+      DELETE FROM projects;
+    " | length)
+    open $db_path | query db $"DELETE FROM projects;"
+    print $"($num_entries) row(s) deleted"
+  }
 }
 
 export def init [] { "not implemented" }
@@ -150,6 +167,6 @@ export def-env main [
   --last (-l) # Bypass selector, use last project
 ] { 
   let project = if $last { get-last-used } else { (gelp select) } 
-  if ($project | is-empty) { return }
+  if ($project | is-empty) { print "No project specified"; return }
   run-action $project
 }
