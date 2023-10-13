@@ -47,7 +47,6 @@ export def-env "gelp select" [] -> record {
         join (
           $usage | 
           reject id | 
-          rename -c [name project_dir] | 
           update last_used { || into datetime }
         ) project_dir --left | 
       sort-by uses
@@ -98,13 +97,13 @@ export def "gelp update-uses" [
 ] {
   open $db_path | query db $"
     INSERT INTO projects 
-      \(name, last_used, uses\)
+      \(project_dir, last_used, uses\)
       VALUES \(
         '($project.project_dir)', 
         '(date now | format date "%Y-%m-%dT%H:%M:%S")', 
         1
       \)
-      ON CONFLICT \(name\) DO UPDATE SET 
+      ON CONFLICT \(project_dir\) DO UPDATE SET 
         uses = uses + excluded.uses,
         last_used = '(date now | format date "%Y-%m-%dT%H:%M:%S")';
   "
@@ -130,18 +129,27 @@ export def "gelp create-db" [
   open $db_path | query db "
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
+      project_dir TEXT NOT NULL UNIQUE,
       uses INTEGER,
       last_used TEXT NOT NULL
     );
   "
 }
 
+def get-last-used [] {
+  gelp get-project-history ~/.local/share/gelp/history.db projects | 
+    update last_used {|| into datetime} | 
+    sort-by last_used | 
+    last
+}
+
 export def init [] { "not implemented" }
 
 # gelp.nu - yet another git helper
-export def-env main [] { 
-  let project = (gelp select)
+export def-env main [
+  --last (-l) # Bypass selector, use last project
+] { 
+  let project = if $last { get-last-used } else { (gelp select) } 
   if ($project | is-empty) { return }
   run-action $project
 }
