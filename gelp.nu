@@ -73,7 +73,7 @@ export def-env "gelp select" [] -> record {
 }
 
 # Run action on project
-def run-action [
+def-env run-action [
   project: record # Project to run action on 
 ] {
   let action = (["edit", "git", "cd", "open remote"] | input list)
