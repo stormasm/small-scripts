@@ -76,7 +76,7 @@ export def-env "gelp select" [] -> record {
 def-env run-action [
   project: record # Project to run action on 
 ] {
-  let action = (["edit", "git", "cd", "open remote"] | input list)
+  let action = (["edit", "git", "cd", "open remote"] | input list -f)
   if ($action == "edit") {
     hx $project.project_dir
   } else if ($action == "git") { 
@@ -142,5 +142,6 @@ export def init [] { "not implemented" }
 # gelp.nu - yet another git helper
 export def-env main [] { 
   let project = (gelp select)
+  if ($project | is-empty) { return }
   run-action $project
 }
