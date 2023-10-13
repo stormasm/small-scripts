@@ -1,6 +1,20 @@
 #!/bin/env nu
 # gelp.nu - yet another git helper
 # TODO: Make database to store usage numbers and sort selection by number of recent uses
+
+export def parse-remote-url [
+  repo_path: path # FS repo path
+] {
+  let git_remote = git -C $repo_path remote get-url origin
+  do -i { $git_remote | url parse | url join } | default (    
+    $git_remote | 
+      parse '{version_control}@{host}:{username}/{repo}.git' | 
+      get 0 | 
+      insert "scheme" "https" | 
+      insert "path" $"($in.username)/($in.repo)" | 
+      url join
+    )
+}
   
 export def docker-info [] {
   docker ps | 
@@ -43,13 +57,15 @@ export def-env "gelp select" [] {
   )
   let project = ($projects | get ($project_idx - 1))  
 
-  let action = (["edit", "git", "cd"] | input list)
+  let action = (["edit", "git", "cd", "open remote"] | input list)
   if ($action == "edit") {
     hx $project.project_dir
   } else if ($action == "git") { 
     gitui -d $project.project_dir
   } else if ($action == "cd") {
     cd $project.project_dir
+  } else if ($action == "open remote") {
+    xdg-open (parse-remote-url $project.project_dir)
   }
 }
 
