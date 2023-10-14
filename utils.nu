@@ -1,5 +1,12 @@
 #!/bin/env nu
-# Visually enumerate
+# utils.nu
+
+# Print 'not implemented' message
+export def not-implemented [
+  item: string # Item not implemented
+] { 
+  print $"(ansi red)Note:(ansi reset) (ansi attr_italic)($item)(ansi reset) (ansi red)not implemented(ansi reset)" 
+} 
 
 # Visually enumerate 
 # 
@@ -12,6 +19,6 @@
 # │ 3 │ 4 - brightness            │
 # │ 4 │ 5 - brightness-control.sh │
 # ╰───┴───────────────────────────╯
-export def main [] {
+export def venumerate [] {
   zip 1..($in | length) | each { $"($in.1) - ($in.0)" } 
 }
