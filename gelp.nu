@@ -1,6 +1,8 @@
 #!/bin/env nu
 # gelp.nu - yet another git helper
+# Dependencies: fd-find
 # TODO: Make database to store usage numbers and sort selection by number of recent uses
+use utils.nu [venumerate, not-implemented]
 
 export def parse-remote-url [
   repo_path: path # FS repo path
@@ -30,17 +32,22 @@ export def docker-info [] {
 }
 
 # Select project to open
-export def-env "gelp select" [] -> record {
+export def-env "gelp select" [
+  exclude?: list<string> # List of directories / files to exclude from project search TODO: not implemented
+] -> record {
+  if not ($exclude | is-empty) { print $"(ansi attr_italic)exclude(ansi reset) (ansi red)not implemented(ansi reset)" }
+
   echo "Gathering projects..."
   let docker_info = docker-info
   let usage = (gelp get-project-history ~/.local/share/gelp/history.db projects) # TODO: update to pull path from environment
-  mut projects = (
-    cd $env.HOME; ls documents/*/.git | 
-    append (ls .gitclones/*/.git) | 
-    insert project_dir { |it| $env.HOME | path join ($it.name | path dirname) } |
+
+  mut projects = { 
+    name: (fd -Hap -g "**/.git" $"($env.HOME)" -E ".cache" -E ".local" -E ".cargo" | lines) } | 
+    flatten | 
+    insert project_dir { $in | get name | path dirname } |
     join ($docker_info | rename -c [Source project_dir]) project_dir --left | 
     rename -b { str downcase | str trim | str replace -a ' ' '_' } 
-  )
+
   if not ($usage | is-empty) {
     $projects = (
       $projects | 
