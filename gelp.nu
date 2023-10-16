@@ -1,7 +1,6 @@
 #!/bin/env nu
 # gelp.nu - yet another git helper
 # Dependencies: fd-find
-# TODO: Make database to store usage numbers and sort selection by number of recent uses
 use utils.nu [venumerate, not-implemented]
 
 export def parse-remote-url [
@@ -32,17 +31,16 @@ export def docker-info [] {
 }
 
 # Select project to open
-export def-env "gelp select" [
-  exclude?: list<string> # List of directories / files to exclude from project search TODO: not implemented
+export def-env select [
+  --exclude: list<string> # List of directories / files to exclude from project search TODO: not implemented
 ] -> record {
-  if not ($exclude | is-empty) { print $"(ansi attr_italic)exclude(ansi reset) (ansi red)not implemented(ansi reset)" }
+  if not ($exclude | is-empty) { not-implemented "exclude" }
 
   echo "Gathering projects..."
   let docker_info = docker-info
-  let usage = (gelp get-project-history ~/.local/share/gelp/history.db projects) # TODO: update to pull path from environment
+  let usage = (get-project-history) 
 
-  mut projects = { 
-    name: (fd -Hap -g "**/.git" $"($env.HOME)" -E ".cache" -E ".local" -E ".cargo" | lines) } | 
+  mut projects = {name: (fd -Hap -g "**/.git" $"($env.HOME)" -E ".cache" -E ".local" -E ".cargo" | lines) } | 
     flatten | 
     insert project_dir { $in | get name | path dirname } |
     join ($docker_info | rename -c [Source project_dir]) project_dir --left | 
@@ -84,7 +82,7 @@ def-env run-action [
   project: record # Project to run action on 
 ] {
   let action = (["edit", "git", "cd", "open remote"] | input list -f $"Action for ($project.project_dir | path basename):")
-  gelp update-uses $project ~/.local/share/gelp/history.db
+  update-uses $project ~/.local/share/gelp/history.db
   if ($action == "edit") {
     hx $project.project_dir
   } else if ($action == "git") { 
@@ -100,7 +98,7 @@ def-env run-action [
 ### Database
 
 # Update number of uses of a project
-export def "gelp update-uses" [
+export def update-uses [
   project: record # Project to record in database
   db_path: path # Database path
 ] {
@@ -119,18 +117,13 @@ export def "gelp update-uses" [
 }
 
 # Get project history
-# TODO: Pull path, table name from environment
-export def "gelp get-project-history" [
-  db_path: path # Database path
-  table_name: string # Database table name
-] {
-  open $db_path | query db $"
-    SELECT * FROM ($table_name);
-  "
+export def get-project-history [] {
+  create-env
+  open $env.gelp_db_dir | query db $"SELECT * FROM projects;"
 }
 
 # Create SQLite database
-export def "gelp create-db" [
+export def create-db [
   db_path: path # Database path
 ] {
   mkdir ($db_path | path dirname)
@@ -147,14 +140,14 @@ export def "gelp create-db" [
 
 # Get last-used project
 def get-last-used [] {
-  gelp get-project-history ~/.local/share/gelp/history.db projects | 
+  get-project-history | 
     update last_used {|| into datetime} | 
     sort-by last_used | 
     last
 }
 
 # Clear project use history
-export def "gelp clear-history" [
+export def clear-history [
   db_path: path # Database path
 ] {
   if (input "Are you sure? ") == "y" {
@@ -169,11 +162,24 @@ export def "gelp clear-history" [
 
 export def init [] { "not implemented" }
 
+export def-env create-env [] {
+  $env.gelp_dir = ($env | get -i gelp_dir | default ($env.HOME | path join ".local/share/gelp"))
+  $env.gelp_db_dir = ($env.gelp_dir | path join "history.db")
+  $env.gelp_projects_cache = ($env.gelp_dir | path join "projects_cache.nuon")
+ }
+
+def update-db [] {
+  
+}
+
 # gelp.nu - yet another git helper
 export def-env main [
   --last (-l) # Bypass selector, use last project
+  --no-cache (-n) # Don't use cached projects
 ] { 
-  let project = if $last { get-last-used } else { (gelp select) } 
+  if not ($no_cache | is-empty) { not-implemented "no_cache" }
+
+  let project = if $last { get-last-used } else { (select) } 
   if ($project | is-empty) { print "No project specified"; return }
   run-action $project
 }
