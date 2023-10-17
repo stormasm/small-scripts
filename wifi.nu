@@ -11,17 +11,20 @@ def get-networks [] {
 }
 
 # Get current config
-export def "wifi config" [] {
+export def config [] {
     nmcli device show | from ssv -n | transpose -r | rename -b {str trim -c ':' | str downcase}
 }
 
 # Connect to wifi and optionally save to pass store
-export def "wifi connect" [
+# TODO: Check if password is already in store
+export def connect [
     --no-save (-n) # Don't save password to pass store
 ] {
     let networks = (get-networks)
     let choice = ($networks | get SSID | input list)
-    if ($networks | where ssid == $choice | first | get wpa) {
+    let choice = ($networks | where ssid == $choice)
+    if ($choice | is-empty) { print "No choice"; return }
+    if ($choice | first | get wpa) {
         let password = (input -s "Password: ")
         nmcli device wifi connect $choice password $password
         if not $no_save {
@@ -33,8 +36,8 @@ export def "wifi connect" [
 }
 
 # Disconnect from wifi
-export def "wifi disconnect" [] {
-    nmcli device disconnect (wifi config | get "general.device")
+export def disconnect [] {
+    nmcli device disconnect (config | get "general.device")
 }
 
 # Get wifi networks
