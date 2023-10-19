@@ -41,7 +41,7 @@ export def update-project-cache [] {
 }
 
 # Select project to open
-export def-env "select project" [] -> record {
+export def-env select-project [] -> record {
   let docker_info = docker-info
   let projects = get-project-history | 
     reject id | 
@@ -185,7 +185,7 @@ export def-env main [
   --update-cache (-u) # Update cached projects
 ] { 
   if $update_cache { update-project-cache }
-  let project = if $last { get-last-used } else { ("select project") } 
+  let project = if $last { get-last-used } else { (select-project) } 
   if ($project | is-empty) { print "No project specified"; return }
   run-action $project
 }
