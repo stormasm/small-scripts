@@ -14,7 +14,7 @@ def parse-remote-url [
       get 0 | 
       insert "scheme" "https" | 
       insert "path" $"($in.username)/($in.repo)" | 
-      select "host" "path" "scheme" |
+      select host path scheme |
       url join
     )
 }
@@ -34,7 +34,7 @@ def docker-info [] {
 }
 
 # Pull projects from filesystem and update database for faster project search
-export def update-project-cache [] {
+def update-project-cache [] {
   fd -Hap -g "**/.git" $"($env.HOME)" -E ".cache" -E ".local" -E ".cargo" | 
     lines | 
     each { update-uses ($in | path dirname) --no-uses }
@@ -46,7 +46,7 @@ export def-env select-project [] -> record {
   let projects = get-project-history | 
     reject id | 
     default 0 uses | 
-    sort-by uses -r |
+    sort-by score -r |
     join ($docker_info | rename -c {"Source": "project_dir"}) project_dir --left |
     rename -b { str downcase | str trim | str replace -a ' ' '_' } 
 
@@ -90,7 +90,7 @@ def-env run-action [
 ### Database
 
 # Update number of uses of a project
-export def update-uses [
+def update-uses [
   project_dir: path # Project path
   --no-uses # Default for projects stored but not yet used
 ] {
@@ -160,16 +160,17 @@ def get-last-used [] {
 }
 
 # Clear project use history
-export def clear-history [
-  db_path: path # Database path
-] {
+export def clear-history [] {
+  create-env
   if (input "Are you sure? ") == "y" {
-    let num_entries = (open $db_path | query db $"
+    let num_entries = (open $env.gelp_db_dir | query db $"
       SELECT * FROM projects;
       DELETE FROM projects;
     " | length)
-    open $db_path | query db $"DELETE FROM projects;"
+    open $env.gelp_db_dir | query db $"DELETE FROM projects;"
     print $"($num_entries) row(s) deleted"
+  } else {
+    print "Cancelling..."
   }
 }
 
@@ -186,6 +187,6 @@ export def-env main [
 ] { 
   if $update_cache { update-project-cache }
   let project = if $last { get-last-used } else { (select-project) } 
-  if ($project | is-empty) { print "No project specified"; return }
+  if ($project | is-empty) { return }
   run-action $project
 }
