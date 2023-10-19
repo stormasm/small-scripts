@@ -3,7 +3,8 @@
 # Dependencies: fd-find
 use utils.nu [venumerate, not-implemented]
 
-export def parse-remote-url [
+# Parse git remote url
+def parse-remote-url [
   repo_path: path # FS repo path
 ] {
   let git_remote = git -C $repo_path remote get-url origin
@@ -17,7 +18,8 @@ export def parse-remote-url [
     )
 }
   
-export def docker-info [] {
+# Get information on running docker containers
+def docker-info [] {
   docker ps | 
     from ssv | 
     insert _ { 
@@ -30,34 +32,23 @@ export def docker-info [] {
     flatten
 }
 
+# Pull projects from filesystem and update database for faster project search
+export def update-project-cache [] {
+  fd -Hap -g "**/.git" $"($env.HOME)" -E ".cache" -E ".local" -E ".cargo" | 
+    lines | 
+    each { update-uses ($in | path dirname) --no-uses }
+}
+
 # Select project to open
-export def-env select [
-  --exclude: list<string> # List of directories / files to exclude from project search TODO: not implemented
-] -> record {
-  if not ($exclude | is-empty) { not-implemented "exclude" }
-
-  echo "Gathering projects..."
+export def-env select [] -> record {
   let docker_info = docker-info
-  let usage = (get-project-history) 
-
-  mut projects = {name: (fd -Hap -g "**/.git" $"($env.HOME)" -E ".cache" -E ".local" -E ".cargo" | lines) } | 
-    flatten | 
-    insert project_dir { $in | get name | path dirname } |
-    join ($docker_info | rename -c [Source project_dir]) project_dir --left | 
+  let projects = get-project-history | 
+    reject id | 
+    default 0 uses | 
+    sort-by uses -r |
+    join ($docker_info | rename -c {"Source": "project_dir"}) project_dir --left |
     rename -b { str downcase | str trim | str replace -a ' ' '_' } 
 
-  if not ($usage | is-empty) {
-    $projects = (
-      $projects | 
-        join (
-          $usage | 
-          reject id | 
-          update last_used { || into datetime }
-        ) project_dir --left | 
-      default 0 uses |
-      sort-by uses -r
-    )
-  }
   let project_idx = (
     $projects | 
     each { 
@@ -82,7 +73,7 @@ def-env run-action [
   project: record # Project to run action on 
 ] {
   let action = (["edit", "git", "cd", "open remote"] | input list -f $"Action for ($project.project_dir | path basename):")
-  update-uses $project ~/.local/share/gelp/history.db
+  update-uses $project.project_dir
   if ($action == "edit") {
     hx $project.project_dir
   } else if ($action == "git") { 
@@ -99,27 +90,51 @@ def-env run-action [
 
 # Update number of uses of a project
 export def update-uses [
-  project: record # Project to record in database
-  db_path: path # Database path
+  project_dir: path # Project path
+  --no-uses # Default for projects stored but not yet used
 ] {
-  open $db_path | query db $"
+  create-env
+  let use_date = (if $no_uses { 
+    [0, ("01-01-1970" | into datetime | format date "%Y-%m-%dT%H:%M:%S")] 
+  } else { 
+    [1, (date now | format date "%Y-%m-%dT%H:%M:%S")] 
+  })
+  open $env.gelp_db_dir | query db $"
     INSERT INTO projects 
       \(project_dir, last_used, uses\)
       VALUES \(
-        '($project.project_dir)', 
-        '(date now | format date "%Y-%m-%dT%H:%M:%S")', 
-        1
+        '($project_dir)', 
+        '($use_date.1)', 
+        ($use_date.0)
       \)
-      ON CONFLICT \(project_dir\) DO UPDATE SET 
+      ON CONFLICT \(project_dir\) DO UPDATE SET
         uses = uses + excluded.uses,
-        last_used = '(date now | format date "%Y-%m-%dT%H:%M:%S")';
+        last_used = CASE WHEN excluded.uses = 0 
+          THEN last_used 
+          ELSE '($use_date.1)' 
+        END;
   "
 }
 
 # Get project history
-export def get-project-history [] {
+export def get-project-history [
+  --non-weighted # Don't use weighting function
+] {
   create-env
-  open $env.gelp_db_dir | query db $"SELECT * FROM projects;"
+  let project_history = (open $env.gelp_db_dir | 
+    query db $"SELECT * FROM projects;" |
+    update last_used { || into datetime })
+
+  # TODO: better weighting
+  let weighting_function = if $non_weighted {
+    $in.item.uses 
+  } else { # Weight using exponential decay of last use and number of uses
+    {(($in.index / ($project_history | length)) | math exp) * $in.item.uses}  
+  }
+  $project_history | 
+    enumerate | 
+    insert score $weighting_function | 
+    flatten
 }
 
 # Create SQLite database
@@ -140,10 +155,7 @@ export def create-db [
 
 # Get last-used project
 def get-last-used [] {
-  get-project-history | 
-    update last_used {|| into datetime} | 
-    sort-by last_used | 
-    last
+  get-project-history | sort-by last_used | last
 }
 
 # Clear project use history
@@ -160,25 +172,18 @@ export def clear-history [
   }
 }
 
-export def init [] { "not implemented" }
-
-export def-env create-env [] {
+# Add some environment variables if not already present
+def-env create-env [] {
   $env.gelp_dir = ($env | get -i gelp_dir | default ($env.HOME | path join ".local/share/gelp"))
   $env.gelp_db_dir = ($env.gelp_dir | path join "history.db")
-  $env.gelp_projects_cache = ($env.gelp_dir | path join "projects_cache.nuon")
  }
-
-def update-db [] {
-  
-}
 
 # gelp.nu - yet another git helper
 export def-env main [
   --last (-l) # Bypass selector, use last project
-  --no-cache (-n) # Don't use cached projects
+  --update-cache (-u) # Update cached projects
 ] { 
-  if not ($no_cache | is-empty) { not-implemented "no_cache" }
-
+  if $update_cache { update-project-cache }
   let project = if $last { get-last-used } else { (select) } 
   if ($project | is-empty) { print "No project specified"; return }
   run-action $project
