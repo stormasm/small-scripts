@@ -16,5 +16,5 @@ export def "history backup" [
 export def "history clear" [] {
   let history_dir = ($nu.history-path | path dirname)
   let sqlfiles = [history.sqlite3, history.sqlite3-shm, history.sqlite3-wal]
-  $sqlfiles | each { |it| mv ($history_dir | path join $it) ($history_dir | path join $"($it).cleared") }
+  $sqlfiles | each { |it| mv -f ($history_dir | path join $it) ($history_dir | path join $"($it).cleared") }
 }
