@@ -22,11 +22,11 @@ export def connect [
 ] {
     let networks = (get-networks)
     let choice = ($networks | get SSID | input list)
-    let choice = ($networks | where ssid == $choice)
+    let choice = ($networks | where ssid == $choice | first)
     if ($choice | is-empty) { print "No choice"; return }
-    if ($choice | first | get wpa) {
-        let password = (input -s "Password: ")
-        nmcli device wifi connect $choice password $password
+    if ($choice | get wpa) {
+        let password = (input "Password: ")
+        nmcli device wifi connect ($choice | get ssid) password $password
         if not $no_save {
             echo $password | pass insert $"wifi/($choice)" --echo
         }
