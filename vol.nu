@@ -31,7 +31,7 @@ export def "vol notify" [
 export def "vol set" [
   value: int # Volume percent
   --controller (-c): string = "Master" # Controller
-  --silent # Don't notify new values
+  --silent (-s) # Don't notify new values
 ] {
   let output = (amixer set $controller $"($value)%" | complete)
   if not $silent {
@@ -69,7 +69,7 @@ export def "vol dec" [
 # Mute volume
 export def "vol mute" [
   --controller (-c): string = "Master" # Controller
-  --silent # Don't notify new values
+  --silent (-s) # Don't notify new values
 ] {
   let output = (amixer sset $controller off | complete)
   if not $silent {
@@ -80,7 +80,7 @@ export def "vol mute" [
 # Toggle volume
 export def "vol toggle" [
   --controller (-c): string = "Master" # Controller
-  --silent # Don't notify new values
+  --silent (-s) # Don't notify new values
 ] {
   let output = (amixer sset $controller toggle | complete)
   if not $silent {
