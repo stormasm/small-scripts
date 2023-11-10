@@ -20,7 +20,7 @@ def parse-remote-url [
 }
   
 # Get information on running docker containers
-def docker-info [] {
+export def docker-info [] {
   docker ps | 
     from ssv | 
     insert _ { 
@@ -52,11 +52,11 @@ export def-env select-project [] -> record {
 
   let project_idx = (
     $projects | 
-    each { 
+    each { |row|
       if not ($in | get -i image | is-empty) { 
-        $"($in.project_dir | path basename) \((ansi g)container: (ansi reset)($in.image)\)" 
+        $"($row.project_dir | path basename) \((ansi g)container: (ansi reset)($row.image)\)" 
       } else { 
-        $"($in.project_dir | path basename)" 
+        $"($row.project_dir | path basename)" 
       }
     } |
     venumerate |
@@ -179,6 +179,23 @@ def-env create-env [] {
   $env.gelp_dir = ($env | get -i gelp_dir | default ($env.HOME | path join ".local/share/gelp"))
   $env.gelp_db_dir = ($env.gelp_dir | path join "history.db")
  }
+
+# TODO: Not done
+export def add-sync-info [] {
+  let projects = $in
+  $projects | 
+    merge ($projects | each { |project| do { git -C $project.project_dir rev-parse --abbrev-ref HEAD } | complete }) | 
+    update stdout { |row| if ($row.exit_code == 0) and (($row.stdout | str trim) != "HEAD") { $row.stdout | str trim } else { null } } | 
+    rename -c { stdout: curr_branch } | 
+    reject exit_code stderr |
+    insert synced { |row| 
+      if $row.curr_branch != null { 
+        git -C $row.project_dir diff --numstat $row.curr_branch $"remotes/origin/($row.curr_branch)" | is-empty 
+      } else {
+        false
+      }
+    }
+}
 
 # gelp.nu - yet another git helper
 export def-env main [
