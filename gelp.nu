@@ -1,4 +1,4 @@
-#!/bin/env nu
+#!/bin/envnu
 # gelp.nu - yet another git helper
 # Dependencies: fd-find
 use utils.nu [venumerate, not-implemented]
@@ -76,9 +76,9 @@ def-env run-action [
   let action = (["edit", "git", "cd", "open remote"] | input list -f $"Action for ($project.project_dir | path basename):")
   update-uses $project.project_dir
   if ($action == "edit") {
-    hx $project.project_dir
+    cd $project.project_dir; run-external ($env.EDITOR) ($project.project_dir)
   } else if ($action == "git") { 
-    gitui -d $project.project_dir
+    cd $project.project_dir; gitui -d $project.project_dir
   } else if ($action == "cd") {
     cd $project.project_dir
   } else if ($action == "open remote") {
