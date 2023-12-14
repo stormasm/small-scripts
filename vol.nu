@@ -16,7 +16,7 @@ def get-vol [
 }
 
 # Notify current volume
-export def "vol notify" [
+export def notify [
   --side (-s): string = "both" # Both, right, left
 ] {
   if not ($side in [both right left]) {
@@ -28,19 +28,19 @@ export def "vol notify" [
 }
 
 # Set volume
-export def "vol set" [
+export def set [
   value: int # Volume percent
   --controller (-c): string = "Master" # Controller
   --silent (-s) # Don't notify new values
 ] {
   let output = (amixer set $controller $"($value)%" | complete)
   if not $silent {
-    vol notify
+    notify
   }
 }
 
 # Increment volume
-export def "vol inc" [
+export def inc [
   value: int = 5 # Increment value
   --controller (-c): string = "Master" # Controller
   --side (-s): string = "both" # Both, right, left
@@ -54,48 +54,48 @@ export def "vol inc" [
     get volume |
     first
   )
-  vol set ($vol + $value) --controller $controller
+  set ($vol + $value) --controller $controller
 }
 
 # Decrement volume
-export def "vol dec" [
+export def dec [
   value: int = 5 # Increment value
   --controller (-c): string = "Master" # Controller
   --side (-s): string = "both" # Both, right, left
 ] {
-  vol inc (-1 * $value) --controller $controller --side $side
+  inc (-1 * $value) --controller $controller --side $side
 }
 
 # Mute volume
-export def "vol off" [
+export def off [
   --controller (-c): string = "Master" # Controller
   --silent (-s) # Don't notify new values
 ] {
   let output = (amixer sset $controller off | complete)
   if not $silent {
-    vol notify
+    notify
   }
 }
 
 # Turn volume on
-export def "vol on" [
+export def on [
   --controller (-c): string = "Master" # Controller
   --silent (-s) # Don't notify new values
 ] {
   let output = (amixer sset $controller on | complete)
   if not $silent {
-    vol notify
+    notify
   }
 }
 
 # Toggle volume
-export def "vol toggle" [
+export def toggle [
   --controller (-c): string = "Master" # Controller
   --silent (-s) # Don't notify new values
 ] {
   let output = (amixer sset $controller toggle | complete)
   if not $silent {
-    vol notify
+    notify
   }
 }
 
