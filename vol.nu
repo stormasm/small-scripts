@@ -67,11 +67,22 @@ export def "vol dec" [
 }
 
 # Mute volume
-export def "vol mute" [
+export def "vol off" [
   --controller (-c): string = "Master" # Controller
   --silent (-s) # Don't notify new values
 ] {
   let output = (amixer sset $controller off | complete)
+  if not $silent {
+    vol notify
+  }
+}
+
+# Turn volume on
+export def "vol on" [
+  --controller (-c): string = "Master" # Controller
+  --silent (-s) # Don't notify new values
+] {
+  let output = (amixer sset $controller on | complete)
   if not $silent {
     vol notify
   }
