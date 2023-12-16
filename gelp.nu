@@ -20,8 +20,10 @@ def parse-remote-url [
 }
   
 # Get information on running docker containers
-export def docker-info [] {
-  docker ps | 
+export def docker-info [
+  --verbose (-v)
+] {
+  let info = (docker ps | 
     from ssv | 
     insert _ { 
       docker inspect -f '{{ json .Mounts }}' (
@@ -30,7 +32,9 @@ export def docker-info [] {
       from json | 
       get 0 
     } |
-    flatten
+    flatten |
+    rename -b { str snake-case })
+  if $verbose { $info } else { $info | select names image status }
 }
 
 # Pull projects from filesystem and update database for faster project search
@@ -42,12 +46,12 @@ def update-project-cache [] {
 
 # Select project to open
 export def-env select-project [] -> record {
-  let docker_info = docker-info
+  let docker_info = docker-info -v
   let projects = get-project-history | 
     reject id | 
     default 0 uses | 
     sort-by score -r |
-    join ($docker_info | rename -c {"Source": "project_dir"}) project_dir --left |
+    join ($docker_info | rename -c {"source": "project_dir"}) project_dir --left |
     rename -b { str downcase | str trim | str replace -a ' ' '_' } 
 
   let project_idx = (
