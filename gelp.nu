@@ -45,7 +45,7 @@ def update-project-cache [] {
 }
 
 # Select project to open
-export def-env select-project [] -> record {
+def-env select-project [] -> record {
   let docker_info = docker-info -v
   let projects = get-project-history | 
     reject id | 
@@ -86,9 +86,19 @@ def-env run-action [
   } else if ($action == "cd") {
     cd $project.project_dir
   } else if ($action == "open remote") {
-    xdg-open (parse-remote-url $project.project_dir)
+    open-remote $project.project_dir
   }
-  
+}
+
+# Open project remote in browser
+export def open-remote [
+  project_dir?: path # Project directory to open. If none, default to recent
+] {
+  if ($project_dir | is-empty) { 
+    xdg-open (parse-remote-url (get-last-used | get project_dir))
+   } else {
+    xdg-open (parse-remote-url $project_dir) # TODO: Maybe change to current directory's project 
+   }
 }
 
 ### Database
@@ -122,7 +132,7 @@ def update-uses [
 }
 
 # Get project history
-export def get-project-history [
+def get-project-history [
   --non-weighted # Don't use weighting function
 ] {
   create-env
@@ -143,7 +153,7 @@ export def get-project-history [
 }
 
 # Create SQLite database
-export def create-db [
+def create-db [
   db_path: path # Database path
 ] {
   mkdir ($db_path | path dirname)
@@ -185,7 +195,7 @@ def-env create-env [] {
  }
 
 # TODO: Not done
-export def add-sync-info [] {
+def add-sync-info [] {
   let projects = $in
   $projects | 
     merge ($projects | each { |project| do { git -C $project.project_dir rev-parse --abbrev-ref HEAD } | complete }) | 
