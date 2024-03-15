@@ -22,3 +22,19 @@ export def not-implemented [
 export def venumerate [] {
   zip 1..($in | length) | each { $"($in.1) - ($in.0)" } 
 }
+
+# Snake case, but title capitalization
+# hello-world -> Hello_World
+export def "str title-snake-case" [] {
+  let input = $in
+  if ($input | is-empty) { return }
+  $input | str title-case | str replace ' ' '_' --all 
+}
+
+# Snake case, but preserve the file extension
+# hello-world.py -> hello_world.py
+export def "str file-snake-case" [] {
+  let input = $in
+  if ($input | is-empty) { return }
+  $input | path parse | update stem { str snake-case } | path join
+}
