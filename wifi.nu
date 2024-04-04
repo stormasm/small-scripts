@@ -65,7 +65,7 @@ export def connect [] {
 }
 
 # Connect to password-protected network using nmcli 
-export def enter-password [
+def enter-password [
   choice: record
   password: string
 ] -> bool {
