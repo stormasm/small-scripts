@@ -13,6 +13,9 @@ export def get-networks [] {
         rename -b {str replace -a '-' '' | str downcase} | 
         insert active {|row| $row.ssid == $config.general_connection } |
         insert wpa {|row| ($row.security | str contains 'WPA') } |
+        insert name_fmt { |row| 
+          $'($row.ssid) (if $row.wpa { $"\((ansi red_bold)secure(ansi reset))" }) (if $row.active { $"\((ansi green_bold)active(ansi reset))" })' 
+        } |
         uniq-by ssid
 }
 
@@ -28,15 +31,9 @@ export def config [] {
 # Connect to wifi and optionally save to pass store
 export def connect [] {
   let networks = (get-networks)
-  let ssid = ($networks | 
-    each {|row| if not $row.active { $"($row.ssid)" } else { $"($row.ssid) \(active\)" }} | 
-    input list --fuzzy)
-  if ($ssid | is-empty) { print "No choice, exiting..."; return }
-
-  let choice = ($networks | where ssid == ($ssid | str replace '(active)' '' | str trim)) 
-  if ($choice | is-empty) { print $"No matching network found for ($ssid)"; return }
-  let choice = ($choice | first)
-  if $choice.active { print $"($ssid) already active"; return }
+  let choice = ($networks | input list -fd name_fmt)
+  if ($choice | is-empty) { return }
+  if $choice.active { print $"($choice.ssid) already active"; return }
 
   if not ($choice.wpa) { 
     let connection_status = (nmcli device wifi connect $choice.ssid | complete) 
@@ -48,9 +45,9 @@ export def connect [] {
     return
   }
 
-  mut password = if not (ls ($PASSWORD_STORE_DIR | path join $WIFI_PASSWORD_DIR) -s | where name == $"($ssid).gpg" | is-empty) {
+  mut password = if not (ls ($PASSWORD_STORE_DIR | path join $WIFI_PASSWORD_DIR) -s | where name == $"($choice.ssid).gpg" | is-empty) {
     print "Pulling password from store"
-    (pass show $'wifi/($ssid)')
+    (pass show $'wifi/($choice.ssid)')
   } else {
     (input "Enter password: ")
   }
