@@ -34,7 +34,7 @@ export def connect [] {
     if ($choice | is-empty) { return }
 
     let connected = (connected)
-    if $choice.address == ($connected | get address.0) and (not ($connected | is-empty)) { 
+    if $choice.address == ($connected | get address) and (not ($connected | is-empty)) { 
         print $"Already connected to ($choice.name)... exiting"
         return
     }
