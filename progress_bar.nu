@@ -21,14 +21,15 @@ export def print-bar [on, off, max, count, show_value, max_disp_value, min_disp_
 
 # Progress bar
 export def main [
+  --start (-s): int = 0 # Starting value
   --max (-m): int = 10 # Maximum width in chars
   --inc (-i): int = 1 # Increment
-  --show-value (-s) # Show value to side of bar
+  --show-value (-S) # Show value to side of bar
   --max-disp-value (-M): int # Max value to display
   --min-disp-value (-m): int # Min value to display
   --percent (-p) # Show value as percent
 ] {
-  mut count = 0
+  mut count = $start
   let min = 0
   let on = '*'
   let off = '-'

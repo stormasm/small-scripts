@@ -2,6 +2,7 @@
 # disp.nu
 
 use std repeat
+use progress_bar.nu
 
 # Get display info via xrandr
 export def info [] {
@@ -46,4 +47,9 @@ export def display-options [] {
     input list -d fmt | 
     get cmd
   )
+}
+
+export def brightness [] {
+  let value = (progress_bar --show-value --max 10 --max-disp-value 1 --start ((info | get brightness.0) * 10 | into int))
+  xrandr --output eDP1 --brightness $value
 }
