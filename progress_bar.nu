@@ -11,7 +11,7 @@ export def print-bar [on, off, max, count, show_value, max_disp_value, min_disp_
     if $percent {
       $" \((($count / $max | math round -p 2) * 100)%)"
     } else {
-      $" \((($max_value - $min_value) * ($count / ($max - $min)) + $min_value | math round -p 3))"
+      $" \((($max_value - $min_value) * ($count / ($max - $min_value)) + $min_value | math round -p 3))"
     }
   } else {
     ""
