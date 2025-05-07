@@ -1,0 +1,16 @@
+#!/bin/bash
+
+choice=$(echo -e "Shutdown\nSuspend\nReboot" | wofi --dmenu --insensitive)
+echo $choice
+
+case "$choice" in
+'Suspend')
+    systemctl suspend
+    ;;
+'Shutdown')
+    shutdown now
+    ;;
+'Reboot')
+    reboot
+    ;;
+esac
